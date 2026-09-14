@@ -453,14 +453,14 @@ g_player_data[MAX_PLAYERS][PlayerProperties], Float:g_player_data_f[MAX_PLAYERS]
 g_player_state[MAX_PLAYERS][4][PlayerPropertiesState], Float:g_player_state_f[MAX_PLAYERS][4][PlayerPropertiesStateF],
 g_knife_data[MAX_KNIVES][KnifeProperties], Float:g_knife_data_f[MAX_KNIVES][KnifePropertiesF],
 g_item_data[MAX_ITEMS][ItemProperties],
-g_menu_item_data[MAX_MENUITEMS][MenuItemProperties],
+g_menu_item_data[MAX_MENUITEMS][MenuItemProperties], bool:g_bPlrStrafeBoost[MAX_PLAYERS + 1],
 
 forward_abil_pre, forward_abil_post, forward_core_change_knife_pre, forward_core_change_knife_post,
 forward_crosshair_draw_pre,
 forward_abil2_pre, forward_abil2_post, forward_abil3_pre, forward_abil3_post, forward_abil4_pre, forward_abil4_post,
 forward_charge_draw_pre, forward_player_knife_killed, forward_player_death, forward_player_change_team, forward_status_draw,
 forward_invisible, forward_indirect_assist, forward_player_heal,
-forward_unblind, forward_unchill, forward_unburn, forward_reburn, forward_uninvisible, forward_unshadow, forward_unclone,
+forward_blind, forward_unblind, forward_unchill, forward_unburn, forward_reburn, forward_uninvisible, forward_unshadow, forward_unclone,
 forward_calculate_render_colors, forward_player_reset_render,
 forward_freeze, forward_unfreeze,
 forward_capture, forward_uncapture, forward_swap, forward_undarkness, forward_update_windboost,
@@ -611,6 +611,9 @@ public plugin_natives()
 
 	register_native("kc_player_get_windboost", "_21kc_player_get_windboost")
 	register_native("kc_player_set_windboost", "_21kc_player_set_windboost")
+
+	register_native("kc_player_get_strafeboost", "_21kc_player_get_strafeboost")
+	register_native("kc_player_set_strafeboost", "_21kc_player_set_strafeboost")
 
 	register_native("kc_player_reflection_start", "_21kc_player_reflection_start")
 	register_native("kc_player_in_reflection", "_21kc_player_in_reflection")
@@ -799,6 +802,7 @@ public plugin_init()
 	forward_player_heal = CreateMultiForward("efk_player_heal", ET_IGNORE, FP_CELL, FP_CELL, FP_CELL)
 	forward_player_change_team = CreateMultiForward("efk_player_change_team", ET_IGNORE, FP_CELL, FP_CELL)
 	forward_indirect_assist = CreateMultiForward("efk_indirect_assist", ET_IGNORE, FP_CELL, FP_CELL, FP_CELL)
+	forward_blind = CreateMultiForward("efk_blind", ET_IGNORE, FP_CELL, FP_CELL, FP_FLOAT)
 	forward_unblind = CreateMultiForward("efk_unblind", ET_IGNORE, FP_CELL, FP_CELL)
 	forward_invisible = CreateMultiForward("efk_invisible", ET_IGNORE, FP_CELL)
 	forward_uninvisible = CreateMultiForward("efk_uninvisible", ET_IGNORE, FP_CELL)
@@ -1040,6 +1044,7 @@ public client_disconnected(iPlayer)
 	save_inventory_to_cache(iPlayer)
 
 	Player[iPlayer][PlrGameFlags] = 0
+	g_bPlrStrafeBoost[iPlayer] = false
 
 	if (!is_user_connected(iPlayer))
 		return
@@ -1892,7 +1897,8 @@ public RG_CBasePlayer_PreThink_Pre(iPlayer)
 
 		if (get_entvar(iPlayer, var_flags) & FL_ONGROUND)
 		{
-			if (Player[iPlayer][PlrWindBoostType] != WINDBOOST_POSITIVE
+			if (!g_bPlrStrafeBoost[iPlayer]
+				&& Player[iPlayer][PlrWindBoostType] != WINDBOOST_POSITIVE
 				&& PlayerF[iPlayer][PlrMaxSpeed] < player_get_knife_maxspeed(iPlayer))
 			{
 				if (995 <= get_entvar(iPlayer, var_flDuckTime) && !(get_entvar(iPlayer, var_button) & IN_DUCK))
@@ -3662,7 +3668,7 @@ public fw_PlayerTouch(iPlayer, iOther)
 
 public RG_CBasePlayer_Duck_Pre(const iPlayer)
 {
-	if (Player[iPlayer][PlrWindBoostType] != WINDBOOST_POSITIVE)
+	if (!g_bPlrStrafeBoost[iPlayer] && Player[iPlayer][PlrWindBoostType] != WINDBOOST_POSITIVE)
 	{
 		new iSGSGround = Player[iPlayer][PlrSGSGround]
 		if (PlayerF[iPlayer][PlrMaxSpeed] < player_get_knife_maxspeed(iPlayer))
@@ -3735,7 +3741,7 @@ Player_BhopThink(iPlayer)
 
 public RG_CBasePlayer_Jump_Pre(const iPlayer)
 {
-	if (Player[iPlayer][PlrWindBoostType] != WINDBOOST_POSITIVE)
+	if (!g_bPlrStrafeBoost[iPlayer] && Player[iPlayer][PlrWindBoostType] != WINDBOOST_POSITIVE)
 	{
 		new iSGSGround = Player[iPlayer][PlrSGSGround]
 		if (PlayerF[iPlayer][PlrMaxSpeed] < player_get_knife_maxspeed(iPlayer))
@@ -5696,6 +5702,8 @@ bool:player_blind(iPlayer, iMode, Float:fBlindTime)
 		PlayerF[iPlayer][PlrScreenFadeTime] = fGameTime  + 0.8
 
 		create_blind_effect(iPlayer)
+
+		ExecuteForward(forward_blind, _, iPlayer, iMode, fBlindTime)
 	}
 	else
 	{
@@ -8046,6 +8054,16 @@ public WindBoostType:_21kc_player_get_windboost(plugin, num_params)
 public _21kc_player_set_windboost(plugin, num_params)
 {
 	player_set_windboost(get_param(1), WindBoostType:get_param(2))
+}
+
+public bool:_21kc_player_get_strafeboost(plugin, num_params)
+{
+	return g_bPlrStrafeBoost[get_param(1)]
+}
+
+public _21kc_player_set_strafeboost(plugin, num_params)
+{
+	g_bPlrStrafeBoost[get_param(1)] = bool:get_param(2)
 }
 
 public _21kc_player_get_bair(plugin, num_params)
