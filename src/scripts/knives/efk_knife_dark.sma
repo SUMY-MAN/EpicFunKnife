@@ -37,6 +37,7 @@ new const PLUGIN[] = "EFK: Dark Knife"
 
 #define SHADOWLINK_MAX_MEMBERS  10
 #define SHADOWLINK_SINE_MIN_DIST  160.0
+#define SHADOWLINK_ANGLE        50.0
 #define SHADOWLINK_RADIUS       400.0
 #define SHADOWLINK_THINK_TIME   0.2
 #define SHADOWLINK_HEAL_AMOUNT  2.0
@@ -360,7 +361,7 @@ public efk_ability3(iPlayer)
         return PLUGIN_HANDLED
     }
 
-    new iTarget = find_player_in_view(iPlayer, 50.0, SHADOWLINK_RADIUS, iAnchor)
+    new iTarget = find_player_in_view(iPlayer, SHADOWLINK_ANGLE, SHADOWLINK_RADIUS, iAnchor)
 
     if (!iTarget || !is_user_alive(iTarget))
     {
@@ -418,7 +419,7 @@ public efk_ability4(iPlayer)
         return PLUGIN_HANDLED
     }
 
-    new iTarget = find_player_in_view(iPlayer, 50.0, SHADOWLINK_RADIUS, iAnchor)
+    new iTarget = find_player_in_view(iPlayer, SHADOWLINK_ANGLE, SHADOWLINK_RADIUS, iAnchor)
 
     if (!shadowlink_is_active(iPlayer, iTarget))
     {
