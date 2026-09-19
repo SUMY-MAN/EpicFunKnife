@@ -453,7 +453,7 @@ g_player_data[MAX_PLAYERS][PlayerProperties], Float:g_player_data_f[MAX_PLAYERS]
 g_player_state[MAX_PLAYERS][4][PlayerPropertiesState], Float:g_player_state_f[MAX_PLAYERS][4][PlayerPropertiesStateF],
 g_knife_data[MAX_KNIVES][KnifeProperties], Float:g_knife_data_f[MAX_KNIVES][KnifePropertiesF],
 g_item_data[MAX_ITEMS][ItemProperties],
-g_menu_item_data[MAX_MENUITEMS][MenuItemProperties], bool:g_bPlrStrafeBoost[MAX_PLAYERS + 1],
+g_menu_item_data[MAX_MENUITEMS][MenuItemProperties],
 
 forward_abil_pre, forward_abil_post, forward_core_change_knife_pre, forward_core_change_knife_post,
 forward_crosshair_draw_pre,
@@ -611,9 +611,6 @@ public plugin_natives()
 
 	register_native("kc_player_get_windboost", "_21kc_player_get_windboost")
 	register_native("kc_player_set_windboost", "_21kc_player_set_windboost")
-
-	register_native("kc_player_get_strafeboost", "_21kc_player_get_strafeboost")
-	register_native("kc_player_set_strafeboost", "_21kc_player_set_strafeboost")
 
 	register_native("kc_player_reflection_start", "_21kc_player_reflection_start")
 	register_native("kc_player_in_reflection", "_21kc_player_in_reflection")
@@ -1044,7 +1041,6 @@ public client_disconnected(iPlayer)
 	save_inventory_to_cache(iPlayer)
 
 	Player[iPlayer][PlrGameFlags] = 0
-	g_bPlrStrafeBoost[iPlayer] = false
 
 	if (!is_user_connected(iPlayer))
 		return
@@ -1897,8 +1893,7 @@ public RG_CBasePlayer_PreThink_Pre(iPlayer)
 
 		if (get_entvar(iPlayer, var_flags) & FL_ONGROUND)
 		{
-			if (!g_bPlrStrafeBoost[iPlayer]
-				&& Player[iPlayer][PlrWindBoostType] != WINDBOOST_POSITIVE
+			if (Player[iPlayer][PlrWindBoostType] != WINDBOOST_POSITIVE
 				&& PlayerF[iPlayer][PlrMaxSpeed] < player_get_knife_maxspeed(iPlayer))
 			{
 				if (995 <= get_entvar(iPlayer, var_flDuckTime) && !(get_entvar(iPlayer, var_button) & IN_DUCK))
@@ -3668,7 +3663,7 @@ public fw_PlayerTouch(iPlayer, iOther)
 
 public RG_CBasePlayer_Duck_Pre(const iPlayer)
 {
-	if (!g_bPlrStrafeBoost[iPlayer] && Player[iPlayer][PlrWindBoostType] != WINDBOOST_POSITIVE)
+	if (Player[iPlayer][PlrWindBoostType] != WINDBOOST_POSITIVE)
 	{
 		new iSGSGround = Player[iPlayer][PlrSGSGround]
 		if (PlayerF[iPlayer][PlrMaxSpeed] < player_get_knife_maxspeed(iPlayer))
@@ -3741,7 +3736,7 @@ Player_BhopThink(iPlayer)
 
 public RG_CBasePlayer_Jump_Pre(const iPlayer)
 {
-	if (!g_bPlrStrafeBoost[iPlayer] && Player[iPlayer][PlrWindBoostType] != WINDBOOST_POSITIVE)
+	if (Player[iPlayer][PlrWindBoostType] != WINDBOOST_POSITIVE)
 	{
 		new iSGSGround = Player[iPlayer][PlrSGSGround]
 		if (PlayerF[iPlayer][PlrMaxSpeed] < player_get_knife_maxspeed(iPlayer))
@@ -8054,16 +8049,6 @@ public WindBoostType:_21kc_player_get_windboost(plugin, num_params)
 public _21kc_player_set_windboost(plugin, num_params)
 {
 	player_set_windboost(get_param(1), WindBoostType:get_param(2))
-}
-
-public bool:_21kc_player_get_strafeboost(plugin, num_params)
-{
-	return g_bPlrStrafeBoost[get_param(1)]
-}
-
-public _21kc_player_set_strafeboost(plugin, num_params)
-{
-	g_bPlrStrafeBoost[get_param(1)] = bool:get_param(2)
 }
 
 public _21kc_player_get_bair(plugin, num_params)

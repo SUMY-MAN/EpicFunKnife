@@ -32,24 +32,25 @@ new const PLUGIN[] = "EFK: Dark Knife"
 #define ABIL3_NAME      "Shadow Link"
 #define ABIL3_CHARGE    50.0
 
-#define ABIL4_NAME      "Shadow Jump"
-#define ABIL4_CHARGE    50.0
-
-#define SHADOWLINK_MAX_MEMBERS  10
+#define SHADOWLINK_MAX_MEMBERS    10
 #define SHADOWLINK_SINE_MIN_DIST  160.0
 #define SHADOWLINK_ANGLE        50.0
-#define SHADOWLINK_RADIUS       400.0
-#define SHADOWLINK_THINK_TIME   0.2
-#define SHADOWLINK_HEAL_AMOUNT  2.0
-#define SHADOWLINK_HEAL_DELAY   1.0
+#define SHADOWLINK_RADIUS       550.0
+#define SHADOWLINK_THINK_TIME       0.2
+#define SHADOWLINK_HEAL_AMOUNT       2.0
+#define SHADOWLINK_HEAL_DELAY        1.0
 
 #define SHADOWLINK_NOISE_MAX      random_num(5, 10)
-#define SHADOWLINK_WIDTH_MIN      3.0
-#define SHADOWLINK_WIDTH_MAX      18.0
+#define SHADOWLINK_WIDTH_MIN      3.0  
+#define SHADOWLINK_WIDTH_MAX      20.0  //18.0
 #define SHADOWLINK_FREQ_MIN       0.05
 #define SHADOWLINK_FREQ_MAX       0.10
 
 #define SHADOWLINK_BEAM_KEY       8739
+
+#define ABIL4_NAME      "Shadow Jump"
+#define ABIL4_CHARGE    50.0
+
 
 new const MODEL_V_KNIFE[]	= "models/next21_efk/v_dark_knife_b02.mdl"
 new const MODEL_P_KNIFE[]	= "models/next21_efk/p_dark_knife.mdl"
@@ -356,56 +357,31 @@ public efk_ability3(iPlayer)
     new iAnchor = Player[iPlayer][PlrShadow]
 
     if (!is_user_alive(iAnchor))
-    {
-        client_print(iPlayer, print_center, "Shadow Link: first possess a teammate")
         return PLUGIN_HANDLED
-    }
 
     new iTarget = find_player_in_view(iPlayer, SHADOWLINK_ANGLE, SHADOWLINK_RADIUS, iAnchor)
 
     if (!iTarget || !is_user_alive(iTarget))
-    {
-        client_print(iPlayer, print_center, "Shadow Link: aim at a living teammate")
         return PLUGIN_HANDLED
-    }
 
     if (get_member(iPlayer, m_iTeam) != get_member(iTarget, m_iTeam))
-    {
-        client_print(iPlayer, print_center, "Shadow Link: target is not a teammate")
         return PLUGIN_HANDLED
-    }
 
     if (Player[iTarget][PlrKnife] == g_iKnifeId)
-    {
-        client_print(iPlayer, print_center, "Shadow Link: target can't hold the Dark Knife")
         return PLUGIN_HANDLED
-    }
-
+    
     if (!shadowlink_in_radius(iAnchor, iTarget))
-    {
-        client_print(iPlayer, print_center, "Shadow Link: target is too far away")
-        return PLUGIN_HANDLED
-    }
+        return PLUGIN_HANDLED 
 
     if (shadowlink_is_active(iPlayer, iTarget))
-    {
-        client_print(iPlayer, print_center, "Shadow Link already exists")
         return PLUGIN_HANDLED
-    }
-
+    
     if (shadowlink_is_full(iPlayer))
-    {
-        client_print(iPlayer, print_center, "Shadow Link limit reached")
         return PLUGIN_HANDLED
-    }
 
     if (!shadowlink_add_member(iPlayer, iTarget))
-    {
-        client_print(iPlayer, print_center, "Shadow Link: beam creation failed")
         return PLUGIN_HANDLED
-    }
-
-    client_print(iPlayer, print_center, "Create Line")
+    
     return PLUGIN_CONTINUE
 }
 
@@ -414,24 +390,18 @@ public efk_ability4(iPlayer)
     new iAnchor = Player[iPlayer][PlrShadow]
 
     if (!is_user_alive(iAnchor))
-    {
-        client_print(iPlayer, print_center, "Shadow Link: first possess a teammate")
         return PLUGIN_HANDLED
-    }
 
     new iTarget = find_player_in_view(iPlayer, SHADOWLINK_ANGLE, SHADOWLINK_RADIUS, iAnchor)
 
-    if (!shadowlink_is_active(iPlayer, iTarget))
-    {
-        client_print(iPlayer, print_center, "Shadow Jump: aim at a linked teammate")
+    if (!iTarget || !is_user_alive(iTarget))
         return PLUGIN_HANDLED
-    }
+    
+    if (!shadowlink_is_active(iPlayer, iTarget))
+        return PLUGIN_HANDLED
 
     if (get_member(iPlayer, m_iTeam) != get_member(iTarget, m_iTeam))
-    {
-        client_print(iPlayer, print_center, "Shadow Jump: blocked by Swap Knife")
         return PLUGIN_HANDLED
-    }
 
     g_bShadowJump[iPlayer] = true
 
@@ -439,7 +409,6 @@ public efk_ability4(iPlayer)
     if (!bShadowed)
     {
         g_bShadowJump[iPlayer] = false
-        client_print(iPlayer, print_center, "Shadow Jump: movement failed")
         return PLUGIN_HANDLED
     }
 
@@ -453,8 +422,6 @@ public efk_ability4(iPlayer)
 
     shadowlink_refresh_anchor(iPlayer)
     shadowlink_add_member(iPlayer, iAnchor)
-
-    client_print(iPlayer, print_center, "Shadow Jump")
 
     return PLUGIN_CONTINUE
 }
@@ -494,6 +461,7 @@ public efk_unshadow(iPlayer)
         get_entvar(iPlayer, var_origin, g_vDarknessOrigin)
         get_entvar(iPlayer, var_v_angle, g_vDarknessAngles)
         set_entvar(iPlayer, var_movetype, MOVETYPE_NOCLIP)
+
         g_iDarknessShadow = 0
     }
 }
@@ -527,15 +495,14 @@ public efk_blind(iPlayer, iMode, Float:fBlindTime)
 {
 	if (Player[iPlayer][PlrKnife] == g_iKnifeId)
 	{
-		/* iPlayer is a Dark Knife owner - spread to every one of his
-		 * own link members. */
-		for (new i = 0; i < SHADOWLINK_MAX_MEMBERS; i++)
-		{
-			new iTarget = g_eShadowLink[iPlayer - 1][i][PlrLink]
-			if (iTarget && is_user_alive(iTarget))
-				kc_player_blind(iTarget, iMode, fBlindTime)
-		}
+		shadowlink_blind_owner_group(iPlayer, iMode, fBlindTime)
+		return
+	}
 
+	new iOwner = shadowlink_owner_possessing(iPlayer)
+	if (iOwner)
+	{
+		shadowlink_blind_owner_group(iOwner, iMode, fBlindTime)
 		return
 	}
 
@@ -547,14 +514,7 @@ public efk_blind(iPlayer, iMode, Float:fBlindTime)
 		if (!shadowlink_is_active(i, iPlayer))
 			continue
 
-		shadowlink_blind_owner(i, iMode, fBlindTime)
-
-		for (new j = 0; j < SHADOWLINK_MAX_MEMBERS; j++)
-		{
-			new iOther = g_eShadowLink[i - 1][j][PlrLink]
-			if (iOther && iOther != iPlayer && is_user_alive(iOther))
-				kc_player_blind(iOther, iMode, fBlindTime)
-		}
+		shadowlink_blind_owner_group(i, iMode, fBlindTime)
 	}
 }
 
@@ -865,7 +825,7 @@ stock shadowlink_transfer_member(iOwner, iSlot, iNewTarget)
     g_eShadowLink[iOwner - 1][iSlot][PlrBeam] = 0
 }
 
-stock shadowlink_blind_owner(iOwner, iMode, Float:fBlindTime)
+stock shadowlink_blind_owner_group(iOwner, iMode, Float:fBlindTime)
 {
     if (is_user_alive(iOwner))
         kc_player_blind(iOwner, iMode, fBlindTime)
@@ -873,6 +833,13 @@ stock shadowlink_blind_owner(iOwner, iMode, Float:fBlindTime)
     new iShadow = Player[iOwner][PlrShadow]
     if (iShadow && iShadow != iOwner && is_user_alive(iShadow))
         kc_player_blind(iShadow, iMode, fBlindTime)
+
+    for (new i = 0; i < SHADOWLINK_MAX_MEMBERS; i++)
+    {
+        new iMember = g_eShadowLink[iOwner - 1][i][PlrLink]
+        if (iMember && is_user_alive(iMember))
+            kc_player_blind(iMember, iMode, fBlindTime)
+    }
 }
 
 stock shadowlink_owner_possessing(iTarget)
